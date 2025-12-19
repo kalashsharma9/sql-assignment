@@ -1,0 +1,220 @@
+# SQL Database Queries - Solutions Guide
+
+## Overview
+This document contains solutions for five SQL query problems involving customers, products, orders, and order items. Each question includes a thinking approach and complete SQL code.
+
+---
+
+## Q1. Find products that are priced higher than the average product price
+
+### Thinking Approach
+1. First find the average price of all products
+2. Compare each product price with that average value
+3. Return products where price exceeds the average
+
+### SQL Solution
+
+```sql
+SELECT product_name, price
+FROM products
+WHERE price > (
+    SELECT AVG(price)
+    FROM products
+);
+```
+
+**Key Concepts:**
+- Subquery to calculate average price
+- WHERE clause to filter products above average
+- Returns product name and price for all matching products
+
+---
+
+## Q2. Find customers who have placed at least one order
+
+### Thinking Approach
+1. Get list of customer_ids from orders table
+2. Match them with customers table
+3. Return distinct customers who have orders
+
+### SQL Solution
+
+```sql
+SELECT customer_name
+FROM customers
+WHERE customer_id IN (
+    SELECT customer_id
+    FROM orders
+);
+```
+
+**Key Concepts:**
+- IN operator for membership checking
+- Subquery returns list of customer IDs from orders
+- Efficiently filters customers with at least one order
+- Returns customer names only
+
+---
+
+## Q3. Find products that are the most expensive within their own category
+
+### Thinking Approach
+1. For each category, find the maximum price
+2. Match products whose price equals the maximum in their category
+3. Handle tie cases (multiple products at max price in same category)
+
+### SQL Solution
+
+```sql
+SELECT product_name, category_id, price
+FROM products p
+WHERE price = (
+    SELECT MAX(price)
+    FROM products
+    WHERE category_id = p.category_id
+);
+```
+
+**Key Concepts:**
+- Correlated subquery that references outer query table
+- Compares each product's price to max price in its category
+- Returns product name, category ID, and price
+- Handles multiple most expensive products per category
+
+---
+
+## Q4. Find customers who have ordered Electronics products
+
+### Thinking Approach
+- We don't care **how many** Electronics products they ordered
+- Just check if it exists (EXISTS operator)
+- Use joins to connect: customers → orders → order_items → products → categories
+
+### SQL Solution
+
+```sql
+SELECT customer_name
+FROM customers c
+WHERE EXISTS (
+    SELECT 1
+    FROM orders o
+    JOIN order_items oi ON o.order_id = oi.order_id
+    JOIN products p ON oi.product_id = p.product_id
+    JOIN categories cat ON p.category_id = cat.category_id
+    WHERE cat.category_name = 'Electronics'
+    AND o.customer_id = c.customer_id
+);
+```
+
+**Key Concepts:**
+- EXISTS operator checks for existence of records (more efficient than COUNT)
+- Correlated subquery linked to outer table
+- Multiple JOINs to traverse related tables
+- Filters by category name 'Electronics'
+- Returns distinct customers who have ordered any Electronics product
+
+**Why EXISTS instead of IN:**
+- EXISTS is more efficient for existence checking
+- Stops searching once a match is found
+- Better performance on large datasets
+
+---
+
+## Q5. Products cheaper than average price
+
+### Thinking Approach
+1. Calculate the average price across all products
+2. Compare each product price to this average
+3. Return products below average
+
+### SQL Solution
+
+```sql
+SELECT product_name, price
+FROM products
+WHERE price < (
+    SELECT AVG(price)
+    FROM products
+);
+```
+
+**Key Concepts:**
+- Simple subquery for average calculation
+- WHERE clause with less-than comparison
+- Inverse of Q1 (below average instead of above)
+- Returns product name and price for all matching products
+
+---
+
+## Summary Table
+
+| Question | Focus | Key Technique | Operator Used |
+|----------|-------|---------------|---------------|
+| Q1 | Above average products | Subquery | > (greater than) |
+| Q2 | Customers with orders | Membership | IN |
+| Q3 | Category expensive products | Correlated subquery | = (comparison) |
+| Q4 | Electronics customers | Existence | EXISTS + JOINs |
+| Q5 | Below average products | Subquery | < (less than) |
+
+---
+
+## Common SQL Patterns Used
+
+### 1. Simple Subquery
+```sql
+WHERE column > (SELECT AVG(column) FROM table)
+```
+Use when comparing against an aggregate value.
+
+### 2. IN Operator
+```sql
+WHERE id IN (SELECT id FROM table WHERE condition)
+```
+Use for membership checking in a list.
+
+### 3. Correlated Subquery
+```sql
+WHERE price = (SELECT MAX(price) FROM products WHERE category_id = p.category_id)
+```
+Use when subquery needs to reference values from outer query.
+
+### 4. EXISTS Operator
+```sql
+WHERE EXISTS (SELECT 1 FROM table WHERE condition AND outer_condition)
+```
+Use for efficient existence checking without caring about result count.
+
+### 5. Multiple JOINs
+```sql
+FROM table1
+JOIN table2 ON table1.id = table2.id
+JOIN table3 ON table2.id = table3.id
+```
+Use to connect related tables across multiple relationships.
+
+---
+
+## Performance Tips
+
+1. **Use EXISTS instead of IN for existence checks** - More efficient for large datasets
+2. **Index frequently used filter columns** - Especially category_name, customer_id
+3. **Correlated subqueries can be slow** - Consider JOIN alternative if performance issues
+4. **Aggregate functions in subqueries** - Usually efficient, but test on large datasets
+5. **Test with EXPLAIN PLAN** - Understand query execution for optimization
+
+---
+
+## Database Schema Notes
+
+**Tables Involved:**
+- `customers` - customer_id, customer_name
+- `orders` - order_id, customer_id
+- `order_items` - order_id, product_id
+- `products` - product_id, product_name, price, category_id
+- `categories` - category_id, category_name
+
+**Relationships:**
+- customers → orders (1:many)
+- orders → order_items (1:many)
+- order_items → products (many:1)
+- products → categories (many:1)
